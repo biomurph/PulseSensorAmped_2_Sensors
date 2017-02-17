@@ -1,21 +1,24 @@
 
-/*  Pulse Sensor Multi Sensor    by Joel Murphy Winter 2016
+/*  Pulse Sensor Multi Sensor    by Joel Murphy Winter 2016, Updated Winter 2017
 
 ----------------------  Notes ----------------------  ----------------------
 This code:
-1) Blinks an LED to User's Live Heartbeat   PIN 13
-2) Fades an LED to User's Live HeartBeat    PIN 5
-3) Determines BPMs``
-4) Prints All of the Above to Serial
+1) Blinks an LED to two user's Live Heartbeat   PIN 13 and PIN 12
+2) Fades an LED to two user's Live HeartBeat    PIN 5 and PIN 9
+3) Determines BPMs for both users
+4) Prints All of the Above to Arduino Serial Plotter or our Processing Visualizer
 
 Read Me:
 https://github.com/WorldFamousElectronics/PulseSensor_Amped_Arduino/blob/master/README.md
  ----------------------       ----------------------  ----------------------
 */
 
+#define PROCESSING_VISUALIZER 1
+#define SERIAL_PLOTTER  2
+
 //  Variables
 const int numPulseSensors = 2;
-const int threshold = 600;
+const int threshold = 530;
 int pulsePin[numPulseSensors];                 // Pulse Sensor purple wire connected to analog pin 0
 int blinkPin[numPulseSensors];                // pin to blink led at each beat
 int fadePin[numPulseSensors];                  // pin to do fancy classy fading blink at each beat
@@ -43,25 +46,18 @@ volatile int amp[numPulseSensors];                   // used to hold amplitude o
 volatile boolean firstBeat[numPulseSensors];        // used to seed rate array so we startup with reasonable BPM
 volatile boolean secondBeat[numPulseSensors];      // used to seed rate array so we startup with reasonable BPM
 
+// SET THE SERIAL OUTPUT TYPE TO YOUR NEEDS
+// PROCESSING_VISUALIZER works with Pulse Sensor Processing Visualizer
+//      https://github.com/WorldFamousElectronics/PulseSensor_Amped_Processing_Visualizer
+// SERIAL_PLOTTER outputs sensor data for viewing with the Arduino Serial Plotter
+//      run the Arduino Serial Plotter at 115200 baud: Tools/Serial Plotter or Command+L
+static int outputType = PROCESSING_VISUALIZER;
 
 void setup() {
 
-  void setStuph();
-    
-        blinkPin[0] = 13; blinkPin[1] = 12;
-        fadePin[0] = 5; fadePin[1] = 9;
-        pulsePin[0] = 0; pulsePin[1] = 1;
-        pinMode(blinkPin[0], OUTPUT); digitalWrite(blinkPin[0], LOW);     
-        pinMode(blinkPin[1], OUTPUT); digitalWrite(blinkPin[1], LOW);
-        pinMode(fadePin[0], OUTPUT); digitalWrite(fadePin[0], HIGH);   
-        pinMode(fadePin[1], OUTPUT); digitalWrite(fadePin[1], HIGH);
+  setStuph();                       // initialize variables and pins
 
   Serial.begin(115200);             // we agree to talk fast!
-  
-  
-  Serial.print("Pin[0] "); Serial.print(pulsePin[0]); Serial.print("\t");
-  Serial.print("Pin[1] "); Serial.println(pulsePin[1]);
-//  analogReference(EXTERNAL);
 
   interruptSetup();                 // sets up to read Pulse Sensor signal every 2mS
 }
@@ -73,21 +69,12 @@ void loop() {
 
     for(int i=0; i<numPulseSensors; i++){
       if(QS[i] == true){
-        if(BPM[i] < 150){
           fadeRate[i] = 0;         // Makes the LED Fade Effect Happen
                                     // Set 'fadeRate' Variable to 255 to fade LED with pulse
           serialOutputWhenBeatHappens(i);   // A Beat Happened, Output that to serial.
           QS[i] = false;
-        }
       }
     }
-//Serial.print(blinkPin[0]);Serial.print("\t");Serial.println(fadePin[0]);
-//  digitalWrite(blinkPin[0], HIGH);
-//  digitalWrite(fadePin[0], HIGH);
-//  delay(200);
-//  digitalWrite(blinkPin[0], LOW);
-//  digitalWrite(fadePin[0], LOW);
-//  delay(200);
 
     ledFadeToBeat();                      // Makes the LED Fade Effect Happen
     delay(20);                            //  take a break
@@ -96,7 +83,7 @@ void loop() {
 
 
 
-
+// FADE BOTH LEDS
 void ledFadeToBeat() {
   for (int j = 0; j < numPulseSensors; j++) {
     fadeRate[j] += 15;
@@ -107,37 +94,39 @@ void ledFadeToBeat() {
 }
 
 
-
+// INITIALIZE VARIABLES AND INPUT/OUTPUT PINS
 void setStuph() {
   for (int i=0; i<numPulseSensors; i++) {
     lastBeatTime[i] = 0;
-    P[i] = 0;
-    T[i] = 0;
+    P[i] = T[i] = 512;
     amp[i] = 0;
     thresh[i] = threshold;
-    amp[i] = 100;                   // used to hold amplitude of pulse waveform, seeded
-    firstBeat[i] = true;        // used to seed rate array so we startup with reasonable BPM
+    amp[i] = 0;               // used to hold amplitude of pulse waveform, seeded
+    firstBeat[i] = true;      // used to seed rate array so we startup with reasonable BPM
     secondBeat[i] = false;
     IBI[i] = 600;             // int that holds the time interval between beats! Must be seeded!
-    Pulse[i] = false;     // "True" when User's live heartbeat is detected. "False" when not a "live beat".
+    Pulse[i] = false;         // "True" when User's live heartbeat is detected. "False" when not a "live beat".
     QS[i] = false;
-    //    switch(i){
-    //      case  0:
-    //        blinkPin[i] = 13;
-    //        fadePin[i] = 5;
-    //        break;
-    //      case  1:
-    //        blinkPin[i] = 12;
-    //        fadePin[i] = 9;
-    //        break;
-    //      default:
-    //        break;
-    //    }
+        switch(i){
+          case  0:
+            pulsePin[i] = 0;    // pulse pin 0
+            blinkPin[i] = 13;   // blink output for pulse 0
+            fadePin[i] = 5;     // fade output for pulse 0
+            break;
+          case  1:
+            pulsePin[i] = 1;    // pulse pin 1
+            blinkPin[i] = 12;   // blink output for pulse 1
+            fadePin[i] = 9;     // fade output for pulse 1
+            break;
+            // add more if you need to here
+          default:
+            break;
+        }
 
-    //    pinMode(blinkPin[i],OUTPUT);         // pin that will blink to your heartbeat!
-    //    digitalWrite(blinkPin[i],LOW);
-    //    pinMode(fadePin[i],OUTPUT);          // pin that will fade to your heartbeat!
-    //    analogWrite(fadePin[i],255);
+        pinMode(blinkPin[i],OUTPUT);         // pin that will blink to your heartbeat!
+        digitalWrite(blinkPin[i],LOW);
+        pinMode(fadePin[i],OUTPUT);          // pin that will fade to your heartbeat!
+        analogWrite(fadePin[i],255);
 
   }
 }
