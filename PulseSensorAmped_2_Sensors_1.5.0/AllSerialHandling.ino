@@ -14,10 +14,10 @@ void serialOutput(){   // Decide How To Output Serial.
       break;
     case SERIAL_PLOTTER:  // open the Arduino Serial Plotter to visualize these data
       for(int i=0; i<numPulseSensors; i++){
-      	Serial.print(BPM[i]);
-      	Serial.print(",");
-      	Serial.print(IBI[i]);
-      	Serial.print(",");
+//      	Serial.print(BPM[i]);   //
+//      	Serial.print(",");      //  UNCOMMENT THESE LINES TO SEE THE BPM AND IBI DATA
+//      	Serial.print(IBI[i]);   //
+//      	Serial.print(",");      //
       	Serial.print(Signal[i]);
 	      if(i!=numPulseSensors-1){ Serial.print(","); }
       }
