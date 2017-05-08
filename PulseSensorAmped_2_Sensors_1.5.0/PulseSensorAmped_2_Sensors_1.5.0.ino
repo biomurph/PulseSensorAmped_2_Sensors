@@ -57,7 +57,7 @@ void setup() {
 
   setStuph();                       // initialize variables and pins
 
-  Serial.begin(115200);             // we agree to talk fast!
+  Serial.begin(250000);             // we agree to talk fast!
 
   interruptSetup();                 // sets up to read Pulse Sensor signal every 2mS
 }
@@ -69,8 +69,8 @@ void loop() {
 
     for(int i=0; i<numPulseSensors; i++){
       if(QS[i] == true){
-          fadeRate[i] = 0;         // Makes the LED Fade Effect Happen
-                                    // Set 'fadeRate' Variable to 255 to fade LED with pulse
+          fadeRate[i] = 255;         // Makes the LED Fade Effect Happen
+          // Set 'fadeRate' Variable to 255 to fade LED with pulse
           serialOutputWhenBeatHappens(i);   // A Beat Happened, Output that to serial.
           QS[i] = false;
       }
@@ -86,7 +86,7 @@ void loop() {
 // FADE BOTH LEDS
 void ledFadeToBeat() {
   for (int j = 0; j < numPulseSensors; j++) {
-    fadeRate[j] += 15;
+    fadeRate[j] -= 15;
     fadeRate[j] = constrain(fadeRate[j], 0, 255); //  keep LED fade value from going into negative numbers!
     analogWrite(fadePin[j], fadeRate[j]);         //  fade LED
   }
