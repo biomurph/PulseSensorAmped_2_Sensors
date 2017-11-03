@@ -3,10 +3,10 @@
 
 ----------------------  Notes ----------------------  ----------------------
 This code:
-1) Blinks an LED to two user's Live Heartbeat   PIN 13 and PIN 12
-2) Fades an LED to two user's Live HeartBeat    PIN 5 and PIN 9
-3) Determines BPMs for both users
-4) Prints All of the Above to Arduino Serial Plotter or our Processing Visualizer
+1) Measures the shortest time between two different heartbeats
+2) Can be used to determine PPT (Pulse Transit Time)
+3) Determines BPM
+4) Prints to Arduino Serial Plotter or our Processing Visualizer
 
 Read Me:
 https://github.com/WorldFamousElectronics/PulseSensor_Amped_Arduino/blob/master/README.md
@@ -16,14 +16,15 @@ https://github.com/WorldFamousElectronics/PulseSensor_Amped_Arduino/blob/master/
 #define PROCESSING_VISUALIZER 1
 #define SERIAL_PLOTTER  2
 
+
 //  Variables
 const int numPulseSensors = 2;
-const int threshold = 530;
+const int threshold = 600;
 int pulsePin[numPulseSensors];                 // Pulse Sensor purple wire connected to analog pin 0
 int blinkPin[numPulseSensors];                // pin to blink led at each beat
-int fadePin[numPulseSensors];                  // pin to do fancy classy fading blink at each beat
-int fadeRate[numPulseSensors];                 // used to fade LED on with PWM on fadePin
-
+int connectionMeter;
+int longestIBI;
+int PPT;
 
 
 // Volatile Variables, used in the interrupt service routine!
@@ -32,6 +33,8 @@ volatile int Signal[numPulseSensors];                // holds the incoming raw d
 volatile int IBI[numPulseSensors];             // int that holds the time interval between beats! Must be seeded!
 volatile boolean Pulse[numPulseSensors];     // "True" when User's live heartbeat is detected. "False" when not a "live beat".
 volatile boolean QS[numPulseSensors];        // becomes true when Arduoino finds a beat.
+volatile int Delta[numPulseSensors];
+volatile unsigned long lastBeatSampleNumber[numPulseSensors];
 
 // Regards Serial OutPut  -- Set This Up to your needs
 static boolean serialVisual = false;   // Set to 'false' by Default.  Re-set to 'true' to see Arduino Serial Monitor ASCII Visual Pulse
@@ -55,9 +58,18 @@ static int outputType = PROCESSING_VISUALIZER;
 
 void setup() {
 
-  setStuph();                       // initialize variables and pins
+  void setStuph();
 
-  Serial.begin(250000);             // we agree to talk fast!
+  blinkPin[0] = 13; blinkPin[1] = 12;
+  pulsePin[0] = 0; pulsePin[1] = 1;
+  pinMode(blinkPin[0], OUTPUT); digitalWrite(blinkPin[0], LOW);
+  pinMode(blinkPin[1], OUTPUT); digitalWrite(blinkPin[1], LOW);
+
+  Serial.begin(115200);             // we agree to talk fast!
+
+
+  Serial.print("Pin[0] "); Serial.print(pulsePin[0]); Serial.print("\t");
+  Serial.print("Pin[1] "); Serial.println(pulsePin[1]);
 
   interruptSetup();                 // sets up to read Pulse Sensor signal every 2mS
 }
@@ -65,14 +77,17 @@ void setup() {
 
 void loop() {
 
-    serialOutput() ;
+//    serialOutput() ;
 
     for(int i=0; i<numPulseSensors; i++){
       if(QS[i] == true){
-          fadeRate[i] = 255;         // Makes the LED Fade Effect Happen
-          // Set 'fadeRate' Variable to 255 to fade LED with pulse
-          serialOutputWhenBeatHappens(i);   // A Beat Happened, Output that to serial.
+        if(BPM[i] < 140){
+          connectionMeter = min(Delta[0],Delta[1]);
+          longestIBI = max(IBI[0],IBI[1]);
+          fadeRate[i] = 0;
+//          serialOutputWhenBeatHappens(i);   // A Beat Happened, Output that to serial.
           QS[i] = false;
+        }
       }
     }
 
@@ -82,52 +97,19 @@ void loop() {
 
 
 
-
-// FADE BOTH LEDS
-void ledFadeToBeat() {
-  for (int j = 0; j < numPulseSensors; j++) {
-    fadeRate[j] -= 15;
-    fadeRate[j] = constrain(fadeRate[j], 0, 255); //  keep LED fade value from going into negative numbers!
-    analogWrite(fadePin[j], fadeRate[j]);         //  fade LED
-  }
-
-}
-
-
-// INITIALIZE VARIABLES AND INPUT/OUTPUT PINS
 void setStuph() {
   for (int i=0; i<numPulseSensors; i++) {
     lastBeatTime[i] = 0;
-    P[i] = T[i] = 512;
+    P[i] = 0;
+    T[i] = 0;
     amp[i] = 0;
     thresh[i] = threshold;
-    amp[i] = 0;               // used to hold amplitude of pulse waveform, seeded
-    firstBeat[i] = true;      // used to seed rate array so we startup with reasonable BPM
+    amp[i] = 100;                   // used to hold amplitude of pulse waveform, seeded
+    firstBeat[i] = true;        // used to seed rate array so we startup with reasonable BPM
     secondBeat[i] = false;
     IBI[i] = 600;             // int that holds the time interval between beats! Must be seeded!
-    Pulse[i] = false;         // "True" when User's live heartbeat is detected. "False" when not a "live beat".
+    Pulse[i] = false;     // "True" when User's live heartbeat is detected. "False" when not a "live beat".
     QS[i] = false;
-        switch(i){
-          case  0:
-            pulsePin[i] = 0;    // pulse pin 0
-            blinkPin[i] = 13;   // blink output for pulse 0
-            fadePin[i] = 5;     // fade output for pulse 0
-            break;
-          case  1:
-            pulsePin[i] = 1;    // pulse pin 1
-            blinkPin[i] = 12;   // blink output for pulse 1
-            fadePin[i] = 9;     // fade output for pulse 1
-            break;
-            // add more if you need to here
-          default:
-            break;
-        }
-
-        pinMode(blinkPin[i],OUTPUT);         // pin that will blink to your heartbeat!
-        digitalWrite(blinkPin[i],LOW);
-        pinMode(fadePin[i],OUTPUT);          // pin that will fade to your heartbeat!
-        analogWrite(fadePin[i],255);
 
   }
 }
-
