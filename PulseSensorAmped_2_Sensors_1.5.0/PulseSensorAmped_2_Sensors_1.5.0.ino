@@ -19,11 +19,9 @@ https://github.com/WorldFamousElectronics/PulseSensor_Amped_Arduino/blob/master/
 
 //  Variables
 const int numPulseSensors = 2;
-const int threshold = 600;
+const int threshold = 560;
 int pulsePin[numPulseSensors];                 // Pulse Sensor purple wire connected to analog pin 0
 int blinkPin[numPulseSensors];                // pin to blink led at each beat
-int connectionMeter;
-int longestIBI;
 int PPT;
 
 
@@ -55,6 +53,7 @@ volatile boolean secondBeat[numPulseSensors];      // used to seed rate array so
 // SERIAL_PLOTTER outputs sensor data for viewing with the Arduino Serial Plotter
 //      run the Arduino Serial Plotter at 115200 baud: Tools/Serial Plotter or Command+L
 static int outputType = PROCESSING_VISUALIZER;
+//static int outputType = SERIAL_PLOTTER;
 
 void setup() {
 
@@ -65,7 +64,7 @@ void setup() {
   pinMode(blinkPin[0], OUTPUT); digitalWrite(blinkPin[0], LOW);
   pinMode(blinkPin[1], OUTPUT); digitalWrite(blinkPin[1], LOW);
 
-  Serial.begin(115200);             // we agree to talk fast!
+  Serial.begin(250000);             // we agree to talk fast!
 
 
   Serial.print("Pin[0] "); Serial.print(pulsePin[0]); Serial.print("\t");
@@ -77,21 +76,18 @@ void setup() {
 
 void loop() {
 
-//    serialOutput() ;
+   serialOutput() ;
 
     for(int i=0; i<numPulseSensors; i++){
       if(QS[i] == true){
         if(BPM[i] < 140){
-          connectionMeter = min(Delta[0],Delta[1]);
-          longestIBI = max(IBI[0],IBI[1]);
-          fadeRate[i] = 0;
-//          serialOutputWhenBeatHappens(i);   // A Beat Happened, Output that to serial.
+          PPT = min(Delta[0],Delta[1]);
+          serialOutputWhenBeatHappens(i);   // A Beat Happened, Output that to serial.
           QS[i] = false;
         }
       }
     }
 
-    ledFadeToBeat();                      // Makes the LED Fade Effect Happen
     delay(20);                            //  take a break
 }
 
